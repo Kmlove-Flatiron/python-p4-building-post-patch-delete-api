@@ -52,20 +52,44 @@ def game_by_id(id):
 
     return response
 
-@app.route('/reviews')
+@app.route('/reviews', methods=["GET", "POST"])
 def reviews():
+    if request.method == "GET":
+        reviews = []
+        for review in Review.query.all():
+            review_dict = review.to_dict()
+            reviews.append(review_dict)
 
-    reviews = []
-    for review in Review.query.all():
-        review_dict = review.to_dict()
-        reviews.append(review_dict)
+        response = make_response(
+            reviews,
+            200
+        )
 
-    response = make_response(
-        reviews,
-        200
-    )
+        return response
+    
+    elif request.method == "POST":
+        review = request.json
 
-    return response
+        new_review = Review(
+            score = review["score"],
+            comment = review["comment"],
+            user_id = review["user_id"],
+            game_id = review["game_id"]
+        )
+
+        # Flatiron School Method using:
+        # request.form.get("")
+        # new_review = Review(
+        #     score=request.form.get("score"),
+        #     comment=request.form.get("comment"),
+        #     game_id=request.form.get("game_id"),
+        #     user_id=request.form.get("user_id"),
+        # )
+
+        db.session.add(new_review)
+        db.session.commit()
+
+        return make_response(new_review.to_dict(), 201)
 
 @app.route('/users')
 def users():
@@ -81,6 +105,35 @@ def users():
     )
 
     return response
+
+@app.route("/reviews/<int:id>", methods=["GET", "DELETE", "PATCH"])
+def review_by_id(id):
+    review = Review.query.filter_by(id=id).first()
+
+    if request.method == "GET":
+        if review:
+            return make_response(review.to_dict(), 200)
+        else:
+            return make_response({"error":"review not found"}, 404)
+        
+    elif request.method == "DELETE":
+  
+        if review:
+            db.session.delete(review)
+            db.session.commit()
+            return make_response({}, 204)
+        else:
+            return make_response({"error": "Review not found"}, 404)
+        
+    elif request.method == "PATCH":
+        for key in request.json:
+            setattr(review, key, request.json[key])
+
+        db.session.add(review)
+        db.session.commit()
+
+        return make_response(review.to_dict(), 202)                
+    
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
